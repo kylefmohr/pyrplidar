@@ -32,7 +32,7 @@ RPLIDAR_DEFAULT_MOTOR_PWM   = 660
 RPLIDAR_CONF_SCAN_MODE_COUNT            = 0x00000070
 RPLIDAR_CONF_SCAN_MODE_US_PER_SAMPLE    = 0x00000071
 RPLIDAR_CONF_SCAN_MODE_MAX_DISTANCE     = 0x00000074
-RPLIDAR_CONF_SCAN_MODE_ANS_TYPE         = 0x00000075
+RPLIDAR_CONF_SCAN_MODE_ANSWER_TYPE         = 0x00000075
 RPLIDAR_CONF_SCAN_MODE_TYPICAL          = 0x0000007C
 RPLIDAR_CONF_SCAN_MODE_NAME             = 0x0000007F
 
@@ -43,7 +43,7 @@ RPLIDAR_STATUS = {
     2: "ERROR"
 }
 
-RPLIDAR_ANS_TYPE = {
+RPLIDAR_ANSWER_TYPE = {
     0x81: "NORMAL",
     0x82: "CAPSULED",
     0x83: "HQ",
@@ -191,7 +191,7 @@ class PyRPlidarScanMode:
             "name" : self.name,
             "max_distance" : self.max_distance,
             "us_per_sample" : self.us_per_sample,
-            "ans_type" : RPLIDAR_ANS_TYPE[self.ans_type]
+            "ans_type" : RPLIDAR_ANSWER_TYPE[self.ans_type]
         }
         return str(data)
 

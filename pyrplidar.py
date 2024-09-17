@@ -1,6 +1,7 @@
 from pyrplidar_serial import PyRPlidarSerial
 from pyrplidar_protocol import *
 import pyrplidar_protocol
+import struct
 
 
 
@@ -35,23 +36,23 @@ class PyRPlidar:
 
         self.lidar_serial.send_data(PyRPlidarCommand(cmd, payload).raw_bytes)
 
-    def receive_discriptor(self):
+    def receive_descriptor(self):
         if self.lidar_serial == None:
             raise PyRPlidarConnectionError("PyRPlidar Error : device is not connected")
         
-        discriptor = PyRPlidarResponse(self.lidar_serial.receive_data(RPLIDAR_DESCRIPTOR_LEN))
+        descriptor = PyRPlidarResponse(self.lidar_serial.receive_data(RPLIDAR_DESCRIPTOR_LEN))
         
-        if discriptor.sync_byte1 != RPLIDAR_SYNC_BYTE1[0] or discriptor.sync_byte2 != RPLIDAR_SYNC_BYTE2[0]:
-            raise PyRPlidarProtocolError("PyRPlidar Error : sync bytes are mismatched", hex(discriptor.sync_byte1), hex(discriptor.sync_byte2))
-        return discriptor
+        if descriptor.sync_byte1 != RPLIDAR_SYNC_BYTE1[0] or descriptor.sync_byte2 != RPLIDAR_SYNC_BYTE2[0]:
+            raise PyRPlidarProtocolError("PyRPlidar Error : sync bytes are mismatched", hex(descriptor.sync_byte1), hex(descriptor.sync_byte2), hex(RPLIDAR_SYNC_BYTE1[0]), hex(RPLIDAR_SYNC_BYTE2[0]))
+        return descriptor
 
-    def receive_data(self, discriptor):
+    def receive_data(self, descriptor):
         if self.lidar_serial == None:
             raise PyRPlidarConnectionError("PyRPlidar Error : received data length is mismatched")
         
-        data = self.lidar_serial.receive_data(discriptor.data_length)
-        if len(data) != discriptor.data_length:
-            raise PyRPlidarProtocolError()
+        data = self.lidar_serial.receive_data(descriptor.data_length)
+        if len(data) != descriptor.data_length:
+            raise PyRPlidarProtocolError("PyRPlidar Error : received data length is mismatched")
         return data
 
 
@@ -70,26 +71,26 @@ class PyRPlidar:
 
     def get_info(self):
         self.send_command(RPLIDAR_CMD_GET_INFO)
-        discriptor = self.receive_discriptor()
-        data = self.receive_data(discriptor)
+        descriptor = self.receive_descriptor()
+        data = self.receive_data(descriptor)
         return PyRPlidarDeviceInfo(data)
 
     def get_health(self):
         self.send_command(RPLIDAR_CMD_GET_HEALTH)
-        discriptor = self.receive_discriptor()
-        data = self.receive_data(discriptor)
+        descriptor = self.receive_descriptor()
+        data = self.receive_data(descriptor)
         return PyRPlidarHealth(data)
 
     def get_samplerate(self):
         self.send_command(RPLIDAR_CMD_GET_SAMPLERATE)
-        discriptor = self.receive_discriptor()
-        data = self.receive_data(discriptor)
+        descriptor = self.receive_descriptor()
+        data = self.receive_data(descriptor)
         return PyRPlidarSamplerate(data)
 
     def get_lidar_conf(self, payload):
         self.send_command(RPLIDAR_CMD_GET_LIDAR_CONF, payload)
-        discriptor = self.receive_discriptor()
-        data = self.receive_data(discriptor)
+        descriptor = self.receive_descriptor()
+        data = self.receive_data(descriptor)
         return data
 
     def get_scan_mode_count(self):
@@ -112,8 +113,7 @@ class PyRPlidar:
                             self.get_lidar_conf(struct.pack("<IH", RPLIDAR_CONF_SCAN_MODE_NAME, mode)),
                             self.get_lidar_conf(struct.pack("<IH", RPLIDAR_CONF_SCAN_MODE_MAX_DISTANCE, mode)),
                             self.get_lidar_conf(struct.pack("<IH", RPLIDAR_CONF_SCAN_MODE_US_PER_SAMPLE, mode)),
-                            self.get_lidar_conf(struct.pack("<IH", RPLIDAR_CONF_SCAN_MODE_ANS_TYPE, mode)))
-            print(scan_mode)
+                            self.get_lidar_conf(struct.pack("<IH", RPLIDAR_CONF_SCAN_MODE_ANSWER_TYPE, mode)))
             scan_modes.append(scan_mode)
         
         return scan_modes
@@ -122,11 +122,11 @@ class PyRPlidar:
 
     def start_scan(self):
         self.send_command(RPLIDAR_CMD_SCAN)
-        discriptor = self.receive_discriptor()
+        descriptor = self.receive_descriptor()
     
         def scan_generator():
             while True:
-                data = self.receive_data(discriptor)
+                data = self.receive_data(descriptor)
                 yield PyRPlidarMeasurement(data)
     
         return scan_generator
@@ -134,26 +134,28 @@ class PyRPlidar:
     
     
     def start_scan_express(self, mode):
+        
         self.send_command(RPLIDAR_CMD_EXPRESS_SCAN, struct.pack("<BI", mode, 0x00000000))
-        discriptor = self.receive_discriptor()
+        
+        descriptor = self.receive_descriptor()
 
-        if discriptor.data_type == 0x82:
+        if descriptor.data_type == 0x82:
             capsule_type = PyRPlidarScanCapsule
-        elif discriptor.data_type == 0x84:
+        elif descriptor.data_type == 0x84:
             capsule_type = PyRPlidarScanUltraCapsule
-        elif discriptor.data_type == 0x85:
+        elif descriptor.data_type == 0x85:
             capsule_type = PyRPlidarScanDenseCapsule
         else:
             raise PyRPlidarProtocolError("RPlidar Error : scan data type is not supported")
         
         def scan_generator():
             
-            data = self.receive_data(discriptor)
+            data = self.receive_data(descriptor)
             capsule_prev = capsule_type(data)
             capsule_current = None
             
             while True:
-                data = self.receive_data(discriptor)
+                data = self.receive_data(descriptor)
                 capsule_current = capsule_type(data)
                 
                 nodes = capsule_type._parse_capsule(capsule_prev, capsule_current)
@@ -167,13 +169,12 @@ class PyRPlidar:
     
     def force_scan(self):
         self.send_command(RPLIDAR_CMD_FORCE_SCAN)
-        discriptor = self.receive_discriptor()
+        descriptor = self.receive_descriptor()
         
         def scan_generator():
             while True:
-                data = self.receive_data(discriptor)
+                data = self.receive_data(descriptor)
                 yield PyRPlidarMeasurement(data)
         
         return scan_generator
     
-

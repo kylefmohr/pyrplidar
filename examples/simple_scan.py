@@ -1,10 +1,17 @@
 from pyrplidar import PyRPlidar
 import time
 
+SERIAL_PORT = 'com16'
+BAUDRATE = 1000000
+# Update the serial port and baudrate to match your device
+# Linux   : "/dev/ttyUSB0"
+# MacOS   : "/dev/tty.usbserial-0001"
+# Windows : "COM5"
+
 def simple_scan():
 
     lidar = PyRPlidar()
-    lidar.connect(port="/dev/ttyUSB0", baudrate=256000, timeout=3)
+    lidar.connect(port=SERIAL_PORT, baudrate=BAUDRATE, timeout=3)
     # Linux   : "/dev/ttyUSB0"
     # MacOS   : "/dev/cu.SLAB_USBtoUART"
     # Windows : "COM5"

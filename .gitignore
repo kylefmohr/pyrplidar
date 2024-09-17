@@ -4,3 +4,7 @@ dist/
 sdist/
 build/
 *.egg-info/
+pyvenv.cfg
+*.pcd
+Lib/*
+Scripts/*
